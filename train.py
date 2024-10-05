@@ -19,7 +19,6 @@ if __name__ == "__main__":
     import wandb
 
     # args
-
     parser = argparse.ArgumentParser("get args for training")
     parser.add_argument("--cifar", action="store_true")
     parser.add_argument("--data_dir", type=str, default="~/.datasets/")
@@ -47,7 +46,7 @@ if __name__ == "__main__":
         }
 
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
-        
+
         model = ViT(**model_config).to(device)
 
         transform = transforms.Compose([
@@ -87,9 +86,9 @@ if __name__ == "__main__":
 
         # checkpoint
         if (epoch + 1) % 10 == 0:
-            torch.save({
-                "optimizer": optimizer.state_dict(),
-                "model": model.get_state_dict()},
+            torch.save(
+                {"optimizer": optimizer.state_dict(),
+                "model": model.state_dict()},
                 os.path.join(args.weight_dir, name + f"-cpt-{epoch}")
             ) 
 
