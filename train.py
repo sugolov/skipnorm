@@ -22,8 +22,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("get args for training")
     parser.add_argument("--cifar", action="store_true")
+    parser.add_argument("--data_dir", type=str, default="~/.datasets/")
 
     args = parser.parse_args()
+    data_dir = args.data_dir
 
     name = "ViT"
 
@@ -50,8 +52,8 @@ if __name__ == "__main__":
             transforms.ToTensor()
         ])
 
-        train_data = torchvision.datasets.CIFAR10(root="~/.datasets/", train=True, transform=transform)
-        test_data = torchvision.datasets.CIFAR10(root="~/.datasets/", train=False, transform=transform)
+        train_data = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
+        test_data = torchvision.datasets.CIFAR10(root=data_dir, train=False,  download=True, transform=transform)
 
         train_loader = DataLoader(train_data, batch_size=64, shuffle=False, num_workers=2)
         test_loader = DataLoader(test_data, batch_size=64, shuffle=False, num_workers=2)
@@ -62,7 +64,7 @@ if __name__ == "__main__":
 
 
     wandb.init(project=name, config=model_config)
-    
+
     optimizer = optim.Adam(model.parameters(), lr=2e-5)
 
     for epoch in range(1):
