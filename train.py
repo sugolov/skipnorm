@@ -37,12 +37,12 @@ if __name__ == "__main__":
             "image_size": 32, 
             "patch_size": 4, 
             "num_classes": 10, 
-            "dim": 64, 
+            "dim": 256, 
             "depth": 10, 
             "heads": 8, 
             "mlp_dim": 256, 
             "channels": 3, 
-            "dim_head": 64
+            "dim_head": 128
         }
 
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
