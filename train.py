@@ -23,9 +23,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("get args for training")
     parser.add_argument("--cifar", action="store_true")
     parser.add_argument("--data_dir", type=str, default="~/.datasets/")
-
+    parser.add_argument("--weight_dir", type=str, default="~/.weights/")
     args = parser.parse_args()
+
     data_dir = args.data_dir
+    weight_dir = args.data_dir
 
     name = "ViT"
 
@@ -44,6 +46,8 @@ if __name__ == "__main__":
             "dim_head": 64
         }
 
+        torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
+        
         model = ViT(**model_config).to(device)
 
         transform = transforms.Compose([
@@ -60,12 +64,11 @@ if __name__ == "__main__":
     else: 
         pass
 
-
+    # train loop
     wandb.init(project=name, config=model_config)
 
-    optimizer = optim.Adam(model.parameters(), lr=2e-5)
-
-    for epoch in range(1):
+    optimizer = optim.Adam(model.parameters(), lr=2e-4)
+    for epoch in range(200):
         
         for X, c in tqdm(train_loader):
             X, c = X.to(device), c.to(device)
@@ -77,7 +80,18 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            wandb.log({"loss": loss.item()})
+            wandb.log({
+                "epoch": epoch,
+                "loss": loss.item()
+            })
+
+        # checkpoint
+        if (epoch + 1) % 10 == 0:
+            torch.save({
+                "optimizer": optimizer.state_dict(),
+                "model": model.get_state_dict()},
+                os.path.join(args.weight_dir, name + f"-cpt-{epoch}")
+            ) 
 
     wandb.finish()
 
