@@ -46,8 +46,6 @@ if __name__ == "__main__":
 
         model = ViT(**model_config).to(device)
 
-        print(dir(ViT))
-
         transform = transforms.Compose([
             transforms.ToTensor()
         ])
@@ -70,6 +68,7 @@ if __name__ == "__main__":
     for epoch in range(1):
         
         for X, c in tqdm(train_loader):
+            X, c = X.to(device), c.to(device)
 
             pred = model(X)
             loss = torch.nn.functional.cross_entropy(pred, c)
