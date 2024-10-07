@@ -4,6 +4,8 @@ from torch import nn
 from einops import rearrange
 from einops.layers.torch import Rearrange
 
+from skipnorm import SkipNorm
+
 # helpers
 
 def pair(t):
