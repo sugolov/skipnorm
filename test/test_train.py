@@ -57,7 +57,7 @@ def test_eval():
     pred = model(X)
 
     print(pred)
-    print(torch.max(pred, dim=-1))
+    print(torch.max(pred, dim=1))
 
 def test_eval_sn_transformer():
 
@@ -76,12 +76,13 @@ def test_eval_sn_transformer():
         
     model = ViT(**model_config).to(device)
 
-    X = torch.randn((5,3,32,32))
+    X = torch.zeros((5,3,32,32))
 
     pred = model(X)
 
     print(pred)
     print(torch.max(pred, dim=-1))
+    print(torch.max(pred, dim=1))
 
 def test_eval_loop():
 
@@ -112,16 +113,15 @@ def test_eval_loop():
         
     model = ViT(**model_config).to(device)
 
-
-    for X, c in tqdm(train_loader):
-        correct = 0
+    correct = 0
+    for X, c in tqdm(test_loader):
 
         X, c = X.to(device), c.to(device)
         pred = model(X)
         c_pred = torch.max(pred, dim=-1).indices
-        
         correct += torch.sum(c_pred == c)
-    print(correct / n_test_data)
+
+    print((correct / n_test_data).item())
 
     
 
@@ -130,5 +130,5 @@ if __name__ == "__main__":
     with torch.no_grad():
         # test_cifar_loaders()
         # test_eval()
-        # test_eval_loop()
-        test_eval_sn_transformer()
+        test_eval_loop()
+        # test_eval_sn_transformer()

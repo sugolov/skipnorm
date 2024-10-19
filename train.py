@@ -108,20 +108,19 @@ if __name__ == "__main__":
 
         # eval loop
         if (epoch + 1) % 1 == 0:
+            correct = 0
             with torch.no_grad():
-                for X, c in tqdm(train_loader):
-                    correct = 0
+                for X, c in tqdm(test_loader):
 
                     X, c = X.to(device), c.to(device)
                     pred = model(X)
                     c_pred = torch.max(pred, dim=-1).indices
                     
                     correct += torch.sum(c_pred == c)
-            accuracy = correct / n_test_data
 
             wandb.log({
                 "eval_epoch": epoch,
-                "eval_acc": accuracy.item()
+                "eval_acc": (correct / n_test_data).item()
             })
             
 
