@@ -115,7 +115,6 @@ def test_eval_loop():
 
     correct = 0
     for X, c in tqdm(test_loader):
-
         X, c = X.to(device), c.to(device)
         pred = model(X)
         c_pred = torch.max(pred, dim=-1).indices

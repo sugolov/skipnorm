@@ -89,7 +89,7 @@ if __name__ == "__main__":
     wandb.init(project="skipnorm", name=name, config=model_config)
 
     optimizer = optim.Adam(model.parameters(), lr=2e-4)
-    for epoch in range(200):
+    for epoch in range(300):
         
         for X, c in tqdm(train_loader):
             X, c = X.to(device), c.to(device)
