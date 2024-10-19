@@ -113,12 +113,16 @@ def test_eval_loop():
         
     model = ViT(**model_config).to(device)
 
-    correct = 0
-    for X, c in tqdm(test_loader):
-        X, c = X.to(device), c.to(device)
-        pred = model(X)
-        c_pred = torch.max(pred, dim=-1).indices
-        correct += torch.sum(c_pred == c)
+    if True:
+        correct = 0
+        with torch.no_grad():
+            for X, c in tqdm(test_loader):
+
+                X, c = X.to(device), c.to(device)
+                pred = model(X)
+                c_pred = torch.max(pred, dim=1).indices
+                
+                correct += torch.sum(c_pred == c)
 
     print((correct / n_test_data).item())
 
