@@ -88,7 +88,7 @@ if __name__ == "__main__":
             })   
 
         # eval loop
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 1 == 0:
             with torch.no_grad():
                 for X, c in tqdm(train_loader):
                     correct = 0
