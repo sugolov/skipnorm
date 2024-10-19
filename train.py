@@ -82,6 +82,11 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
+            wandb.log({
+                "epoch": epoch,
+                "loss": loss.item()
+            })   
+
         # eval loop
         if (epoch + 1) % 10 == 0:
             with torch.no_grad():
@@ -94,17 +99,11 @@ if __name__ == "__main__":
                     
                     correct += torch.sum(c_pred == c)
             accuracy = correct / n_test_data
-            
+
             wandb.log({
-                "epoch": epoch,
-                "loss": loss.item(),
-                "eval": accuracy.item()
+                "eval_epoch": epoch,
+                "eval_acc": accuracy.item()
             })
-        else:
-            wandb.log({
-                "epoch": epoch,
-                "loss": loss.item()
-            })    
             
 
         # checkpoint
