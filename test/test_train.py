@@ -59,6 +59,30 @@ def test_eval():
     print(pred)
     print(torch.max(pred, dim=-1))
 
+def test_eval_sn_transformer():
+
+    model_config = {
+            "image_size": 32, 
+            "patch_size": 4, 
+            "num_classes": 10, 
+            "dim": 32, 
+            "depth": 4, 
+            "heads": 2, 
+            "mlp_dim": 10, 
+            "channels": 3, 
+            "dim_head": 10,
+            "sn_window_size": 2
+        }
+        
+    model = ViT(**model_config).to(device)
+
+    X = torch.randn((5,3,32,32))
+
+    pred = model(X)
+
+    print(pred)
+    print(torch.max(pred, dim=-1))
+
 def test_eval_loop():
 
     data_dir = "~/.datasets/"
@@ -106,4 +130,5 @@ if __name__ == "__main__":
     with torch.no_grad():
         # test_cifar_loaders()
         # test_eval()
-        test_eval_loop()
+        # test_eval_loop()
+        test_eval_sn_transformer()

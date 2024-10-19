@@ -30,10 +30,27 @@ if __name__ == "__main__":
     data_dir = args.data_dir
     weight_dir = args.data_dir
 
-    name = "ViT"
+    name = ""
 
-    if args.cifar:
-        name += "_cifar"
+    if args.skipnorm:
+        name += "ViT_SN"
+        model_config = {
+            "image_size": 32, 
+            "patch_size": 4, 
+            "num_classes": 10, 
+            "dim": 256, 
+            "depth": 10, 
+            "heads": 8, 
+            "mlp_dim": 256, 
+            "channels": 3, 
+            "dim_head": 128,
+            "sn_window_size": 4
+        }
+
+        torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
+        model = ViT(**model_config).to(device)
+    else:
+        name += "ViT"
 
         model_config = {
             "image_size": 32, 
@@ -48,8 +65,10 @@ if __name__ == "__main__":
         }
 
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
-
         model = ViT(**model_config).to(device)
+
+    if args.cifar:
+        name += "_cifar"
 
         transform = transforms.Compose([
             transforms.ToTensor()
