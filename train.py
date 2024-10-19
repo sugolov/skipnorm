@@ -21,6 +21,8 @@ if __name__ == "__main__":
     # args
     parser = argparse.ArgumentParser("get args for training")
     parser.add_argument("--cifar", action="store_true")
+    parser.add_argument("--mnist", action="store_true")
+    parser.add_argument("--skipnorm", action="store_true")
     parser.add_argument("--data_dir", type=str, default="~/.datasets/")
     parser.add_argument("--weight_dir", type=str, default="~/.weights/")
     args = parser.parse_args()
@@ -55,6 +57,7 @@ if __name__ == "__main__":
 
         train_data = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
         test_data = torchvision.datasets.CIFAR10(root=data_dir, train=False,  download=True, transform=transform)
+        n_test_data = len(test_data)
 
         train_loader = DataLoader(train_data, batch_size=64, shuffle=False, num_workers=2)
         test_loader = DataLoader(test_data, batch_size=64, shuffle=False, num_workers=2)
@@ -79,10 +82,30 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
+        # eval loop
+        if (epoch + 1) % 10 == 0:
+            with torch.no_grad():
+                for X, c in tqdm(train_loader):
+                    correct = 0
+
+                    X, c = X.to(device), c.to(device)
+                    pred = model(X)
+                    c_pred = torch.max(pred, dim=-1).indices
+                    
+                    correct += torch.sum(c_pred == c)
+            accuracy = correct / n_test_data
+            
+            wandb.log({
+                "epoch": epoch,
+                "loss": loss.item(),
+                "eval": accuracy.item()
+            })
+        else:
             wandb.log({
                 "epoch": epoch,
                 "loss": loss.item()
-            })
+            })    
+            
 
         # checkpoint
         if (epoch + 1) % 10 == 0:
