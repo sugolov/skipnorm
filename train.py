@@ -67,7 +67,7 @@ if __name__ == "__main__":
         pass
 
     # train loop
-    wandb.init(project=name, config=model_config)
+    wandb.init(project="skipnorm", name=name, config=model_config)
 
     optimizer = optim.Adam(model.parameters(), lr=2e-4)
     for epoch in range(200):
