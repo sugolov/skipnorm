@@ -81,10 +81,10 @@ class Transformer(nn.Module):
 
 
 class SNTransformer(nn.Module):
-    def __init__(self, dim, depth, heads, dim_head, mlp_dim, window_size):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, window):
         super().__init__()
         self.norm = nn.LayerNorm(dim)
-        self.skipnorm = SkipNorm(dim, window_size)
+        self.skipnorm = SkipNorm(dim, depth, window)
         self.layers = nn.ModuleList([])
         for _ in range(depth):
             self.layers.append(nn.ModuleList([
@@ -93,13 +93,13 @@ class SNTransformer(nn.Module):
             ]))
     def forward(self, x):
         self.skipnorm.reset()
-        for attn, ff in self.layers:
+        for i, (attn, ff) in enumerate(self.layers):
             s = attn(x) + x
-            x = x + self.skipnorm(s + ff(s))
+            x = x + self.skipnorm(s + ff(s), i)
         return self.norm(x)
 
 class ViT(nn.Module):
-    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, channels = 3, dim_head = 64, sn_window_size=None):
+    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, channels = 3, dim_head = 64, sn_window=None):
         super().__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
@@ -121,10 +121,10 @@ class ViT(nn.Module):
             dim = dim,
         ) 
 
-        if sn_window_size is None:
+        if sn_window is None:
             self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
         else:
-            self.transformer = SNTransformer(dim, depth, heads, dim_head, mlp_dim, window_size=sn_window_size)
+            self.transformer = SNTransformer(dim, depth, heads, dim_head, mlp_dim, sn_window)
 
         self.pool = "mean"
         self.to_latent = nn.Identity()

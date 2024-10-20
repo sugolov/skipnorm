@@ -7,12 +7,12 @@ ViT_config = {
     "image_size": 32, 
     "patch_size": 2, 
     "num_classes": 10, 
-    "dim": 768, 
-    "depth": 12, 
-    "heads": 12, 
-    "mlp_dim": 1024, 
+    "dim": 256, 
+    "depth": 8, 
+    "heads": 8, 
+    "mlp_dim": 512, 
     "channels": 3, 
-    "dim_head": 768
+    "dim_head": 256
 }
 
 # additional fn
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         name += "ViT_SN"
 
         model_config = ViT_config
-        model_config["window"] = 4
+        model_config["sn_window"] = 4
 
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
         model = ViT(**model_config).to(device)
@@ -78,11 +78,11 @@ if __name__ == "__main__":
     else: 
         pass
 
+    # optimizer 
+    optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay=1e-5)
+
     # train loop
     wandb.init(project="skipnorm", name=name, config=model_config)
-
-    # optimizer 
-    optimizer = optim.Adam(model.parameters(), lr=6e-4, weight_decay=0.1)
 
     # define eval loop
     def eval_loop(model, test_loader, epoch):
