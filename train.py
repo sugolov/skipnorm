@@ -7,12 +7,12 @@ ViT_config = {
     "image_size": 32, 
     "patch_size": 2, 
     "num_classes": 10, 
-    "dim": 1024, 
-    "depth": 24, 
-    "heads": 16, 
-    "mlp_dim": 4096, 
+    "dim": 768, 
+    "depth": 12, 
+    "heads": 12, 
+    "mlp_dim": 1024, 
     "channels": 3, 
-    "dim_head": 1024
+    "dim_head": 768
 }
 
 # additional fn
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         name += "ViT_SN"
 
         model_config = ViT_config
-        model_config["sn_window_size"] = 4
+        model_config["window"] = 4
 
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
         model = ViT(**model_config).to(device)
@@ -56,6 +56,7 @@ if __name__ == "__main__":
         name += "ViT"
 
         model_config = ViT_config
+
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
         model = ViT(**model_config).to(device)
 
