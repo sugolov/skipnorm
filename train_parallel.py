@@ -111,9 +111,11 @@ def train(rank, world_size, args):
     # Create model and wrap with DDP
     model = ViT(**model_config).to(rank)
     model = DDP(model, device_ids=[rank])
+    print("wrapped models")
     
     # Get data loaders
     train_loader, test_loader, train_sampler, n_test_data = get_data_loaders(args, rank, world_size)
+    print("got loaders")
     
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay=1e-5)
@@ -140,6 +142,7 @@ def train(rank, world_size, args):
                     "epoch": epoch,
                     "loss": loss.item()
                 })
+            print(f"epoch {epoch} loss {loss.item()}")
         
         # Evaluation
         if (epoch + 1) % 1 == 0:
