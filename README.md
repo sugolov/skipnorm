@@ -1,4 +1,4 @@
-# traj-norm
+# skip norm
 
 To run training:
 ```
