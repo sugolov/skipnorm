@@ -48,7 +48,7 @@ if __name__ == "__main__":
         name += "ViT_SN"
 
         model_config = ViT_config
-        model_config["sn_window"] = 4
+        model_config["sn_window"] = 6
 
         torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
         model = ViT(**model_config).to(device)
