@@ -1,52 +1,28 @@
 import os
 import argparse
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import torch.distributed as dist
-import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
 import torchvision
 from torchvision import transforms
 from tqdm import tqdm
 import wandb
+import gc
+from torch.cuda.amp import autocast, GradScaler
 from vit import ViT
 
-def setup(rank, world_size):
-    """Initialize distributed training environment."""
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-    torch.cuda.set_device(rank)
+def setup_memory_settings():
+    """Configure CUDA memory settings to avoid fragmentation."""
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:512'
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.enabled = True
 
-def cleanup():
-    """Clean up distributed training environment."""
-    dist.destroy_process_group()
-
-def get_model_config(args):
-    """Get model configuration based on arguments."""
-    model_config = {
-        "image_size": 32,
-        "patch_size": 2,
-        "num_classes": 10,
-        "dim": 256,
-        "depth": 8,
-        "heads": 8,
-        "mlp_dim": 512,
-        "channels": 3,
-        "dim_head": 256
-    }
-    
-    if args.skipnorm:
-        model_config["sn_window"] = 4
-    
-    return model_config
-
-def get_data_loaders(args, rank, world_size):
-    """Create distributed data loaders."""
+def get_data_loaders(args, world_size=None, rank=None):
+    """Create memory-efficient data loaders."""
     transform = transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Lambda(lambda x: x.half())  # Convert to half precision
     ])
     
     if args.cifar:
@@ -54,135 +30,170 @@ def get_data_loaders(args, rank, world_size):
                                                  download=True, transform=transform)
         test_data = torchvision.datasets.CIFAR10(root=args.data_dir, train=False, 
                                                 download=True, transform=transform)
+    
+    if world_size is not None and rank is not None:
+        train_sampler = DistributedSampler(train_data, num_replicas=world_size, 
+                                          rank=rank, shuffle=True)
+        test_sampler = DistributedSampler(test_data, num_replicas=world_size, 
+                                         rank=rank, shuffle=False)
     else:
-        raise NotImplementedError("Only CIFAR-10 is implemented in this example")
+        train_sampler = None
+        test_sampler = None
     
-    train_sampler = DistributedSampler(train_data, num_replicas=world_size, 
-                                      rank=rank, shuffle=True)
-    test_sampler = DistributedSampler(test_data, num_replicas=world_size, 
-                                     rank=rank, shuffle=False)
+    # Reduce batch size and increase num_workers
+    train_loader = DataLoader(
+        train_data, 
+        batch_size=32,  # Reduced from 64
+        shuffle=(train_sampler is None),
+        sampler=train_sampler,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=2
+    )
     
-    train_loader = DataLoader(train_data, batch_size=64, sampler=train_sampler, 
-                            num_workers=2, pin_memory=True)
-    test_loader = DataLoader(test_data, batch_size=64, sampler=test_sampler, 
-                           num_workers=2, pin_memory=True)
+    test_loader = DataLoader(
+        test_data, 
+        batch_size=32,  # Reduced from 64
+        shuffle=False,
+        sampler=test_sampler,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=2
+    )
     
     return train_loader, test_loader, train_sampler, len(test_data)
 
-def eval_loop(model, test_loader, epoch, rank, n_test_data):
-    """Evaluate model on test set."""
-    model.eval()
-    correct = torch.zeros(1).to(rank)
-    
-    with torch.no_grad():
-        for X, c in test_loader:
-            X, c = X.to(rank), c.to(rank)
-            pred = model(X)
-            c_pred = torch.max(pred, dim=1).indices
-            correct += torch.sum(c_pred == c)
-    
-    # Gather results from all processes
-    dist.all_reduce(correct, op=dist.ReduceOp.SUM)
-    
-    if rank == 0:
-        accuracy = (correct.item() / n_test_data)
-        wandb.log({
-            "eval_epoch": epoch,
-            "eval_acc": accuracy
-        })
-    
-    model.train()
-    return correct.item() / n_test_data
-
-def train(rank, world_size, args):
-    """Main training function for each process."""
-    setup(rank, world_size)
-    
-    # Get model configuration and name
-    model_config = get_model_config(args)
-    name = "ViT_SN" if args.skipnorm else "ViT"
-    name += "_cifar" if args.cifar else ""
-    
-    # Save model config (only on rank 0)
-    if rank == 0:
-        torch.save(model_config, os.path.join(args.weight_dir, name + "_model_config"))
-        wandb.init(project="skipnorm", name=name, config=model_config)
-    
-    # Create model and wrap with DDP
-    model = ViT(**model_config).to(rank)
-    model = DDP(model, device_ids=[rank])
-    print("wrapped models")
-    
-    # Get data loaders
-    train_loader, test_loader, train_sampler, n_test_data = get_data_loaders(args, rank, world_size)
-    print("got loaders")
-    
-    # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay=1e-5)
-    
-    # Initial evaluation
-    if rank == 0:
-        eval_loop(model, test_loader, 0, rank, n_test_data)
-    
-    # Training loop
-    for epoch in range(300):
-        train_sampler.set_epoch(epoch)  # Important for proper shuffling
-        
-        for X, c in train_loader:
-            X, c = X.to(rank), c.to(rank)
-            pred = model(X)
-            loss = torch.nn.functional.cross_entropy(pred, c)
-            
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            
-            if rank == 0:
-                wandb.log({
-                    "epoch": epoch,
-                    "loss": loss.item()
-                })
-            print(f"epoch {epoch} loss {loss.item()}")
-        
-        # Evaluation
-        if (epoch + 1) % 1 == 0:
-            eval_loop(model, test_loader, epoch + 1, rank, n_test_data)
-        
-        # Checkpoint (only on rank 0)
-        if rank == 0 and (epoch + 1) % 10 == 0:
-            torch.save(
-                {
-                    "optimizer": optimizer.state_dict(),
-                    "model": model.module.state_dict()
-                },
-                os.path.join(args.weight_dir, name + f"-cpt-{epoch+1}")
-            )
-    
-    if rank == 0:
-        wandb.finish()
-    
-    cleanup()
-
 def main():
+    # Set up memory optimizations
+    setup_memory_settings()
+    
     parser = argparse.ArgumentParser("get args for training")
     parser.add_argument("--cifar", action="store_true")
     parser.add_argument("--mnist", action="store_true")
     parser.add_argument("--skipnorm", action="store_true")
     parser.add_argument("--data_dir", type=str, default="~/.datasets/")
     parser.add_argument("--weight_dir", type=str, default="~/.weights/")
-    parser.add_argument("--world_size", type=int, default=4, 
-                        help="Number of GPUs to use for training")
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=2)
     args = parser.parse_args()
     
-    # Expand user directory
-    args.data_dir = os.path.expanduser(args.data_dir)
-    args.weight_dir = os.path.expanduser(args.weight_dir)
+    # Setup distributed training
+    if 'LOCAL_RANK' in os.environ:
+        local_rank = int(os.environ['LOCAL_RANK'])
+        rank = int(os.environ['RANK'])
+        world_size = int(os.environ['WORLD_SIZE'])
+        
+        torch.cuda.set_device(local_rank)
+        dist.init_process_group(backend='nccl')
+    else:
+        local_rank = 0
+        rank = None
+        world_size = None
     
-    # Create weight directory if it doesn't exist
-    os.makedirs(args.weight_dir, exist_ok=True)
+    device = torch.device(f'cuda:{local_rank}')
     
-    # Launch distributed training
-    mp.spawn(train, args=(args.world_size, args), nprocs=args.world_size, join=True)
+    # Clear GPU cache
+    torch.cuda.empty_cache()
+    gc.collect()
+    
+    # Model configuration with reduced size
+    model_config = {
+        "image_size": 32,
+        "patch_size": 2,
+        "num_classes": 10,
+        "dim": 192,       # Reduced from 256
+        "depth": 6,       # Reduced from 8
+        "heads": 6,       # Reduced from 8
+        "mlp_dim": 384,   # Reduced from 512
+        "channels": 3,
+        "dim_head": 192   # Reduced from 256
+    }
+    
+    if args.skipnorm:
+        name = "ViT_SN"
+        model_config["sn_window"] = 4
+    else:
+        name = "ViT"
+    
+    if args.cifar:
+        name += "_cifar"
+    
+    # Initialize model with mixed precision
+    model = ViT(**model_config).to(device).half()  # Convert to half precision
+    
+    if rank is not None:
+        model = DDP(model, device_ids=[local_rank])
+    
+    # Initialize mixed precision training
+    scaler = GradScaler()
+    
+    # Get data loaders
+    train_loader, test_loader, train_sampler, n_test_data = get_data_loaders(
+        args, world_size, rank
+    )
+    
+    # Initialize optimizer with gradient clipping
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=2e-4,
+        weight_decay=1e-5,
+        eps=1e-4  # Increased epsilon for half precision
+    )
+    
+    # Training loop with memory optimizations
+    for epoch in range(300):
+        if train_sampler is not None:
+            train_sampler.set_epoch(epoch)
+        
+        model.train()
+        optimizer.zero_grad(set_to_none=True)  # More memory efficient than zeros
+        
+        for i, (X, c) in enumerate(tqdm(train_loader, disable=rank not in [0, None])):
+            X, c = X.to(device, non_blocking=True), c.to(device, non_blocking=True)
+            
+            # Mixed precision training
+            with autocast():
+                pred = model(X)
+                loss = torch.nn.functional.cross_entropy(pred, c)
+                loss = loss / args.gradient_accumulation_steps
+            
+            # Scale loss and backward pass
+            scaler.scale(loss).backward()
+            
+            # Gradient accumulation
+            if (i + 1) % args.gradient_accumulation_steps == 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad(set_to_none=True)
+            
+            if rank in [0, None]:
+                wandb.log({
+                    "epoch": epoch,
+                    "loss": loss.item() * args.gradient_accumulation_steps
+                })
+            
+            # Clear cache periodically
+            if i % 100 == 0:
+                torch.cuda.empty_cache()
+        
+        # Checkpoint
+        if rank in [0, None] and (epoch + 1) % 10 == 0:
+            state_dict = model.module.state_dict() if rank is not None else model.state_dict()
+            torch.save(
+                {
+                    "optimizer": optimizer.state_dict(),
+                    "model": state_dict,
+                    "scaler": scaler.state_dict(),
+                },
+                os.path.join(args.weight_dir, name + f"-cpt-{epoch+1}")
+            )
+    
+    if rank is not None:
+        dist.destroy_process_group()
 
 if __name__ == "__main__":
     main()
