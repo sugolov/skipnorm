@@ -73,7 +73,6 @@ def get_data_loaders(args, world_size=None, rank=None):
     )
     
     return train_loader, test_loader, train_sampler, len(test_data)
-=======
 
 from collections import defaultdict
 
