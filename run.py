@@ -9,7 +9,7 @@ def get_args_parser():
     # parser.add_argument('--unscale-lr', action='store_true')
 
     # Model parameters
-    parser.add_argument('--model', default='deit_base_patch16_224', type=str, metavar='MODEL',
+    parser.add_argument('--model_name', default='ViT_S16', type=str, metavar='MODEL',
                         help='Name of model to train')
     parser.add_argument('--input-size', default=32, type=int, help='images input size')
 
@@ -43,12 +43,12 @@ def get_args_parser():
                         help='LR scheduler (default: "cosine"')
     parser.add_argument('--lr', type=float, default=5e-4, metavar='LR',
                         help='learning rate (default: 5e-4)')
-    parser.add_argument('--lr-noise', type=float, nargs='+', default=None, metavar='pct, pct',
-                        help='learning rate noise on/off epoch percentages')
-    parser.add_argument('--lr-noise-pct', type=float, default=0.67, metavar='PERCENT',
-                        help='learning rate noise limit percent (default: 0.67)')
-    parser.add_argument('--lr-noise-std', type=float, default=1.0, metavar='STDDEV',
-                        help='learning rate noise std-dev (default: 1.0)')
+    # parser.add_argument('--lr-noise', type=float, nargs='+', default=None, metavar='pct, pct',
+    #                     help='learning rate noise on/off epoch percentages')
+    # parser.add_argument('--lr-noise-pct', type=float, default=0.67, metavar='PERCENT',
+    #                     help='learning rate noise limit percent (default: 0.67)')
+    # parser.add_argument('--lr-noise-std', type=float, default=1.0, metavar='STDDEV',
+    #                     help='learning rate noise std-dev (default: 1.0)')
     parser.add_argument('--warmup-lr', type=float, default=1e-6, metavar='LR',
                         help='warmup learning rate (default: 1e-6)')
     parser.add_argument('--min-lr', type=float, default=1e-5, metavar='LR',
@@ -161,3 +161,22 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://', 
                         help='url used to set up distributed training')
     return parser
+
+def run(model_name, data_name, epochs, batch_size, lr, weight_decay, p_drop, p_sd, distributed, world_size, **kwargs):
+    from model import get_model
+    from data import get_dataloaders 
+
+    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(data_name, **args)
+    model = get_model(model_name, image_size, num_classes)
+
+    if distributed:
+        train.main(model, train_dataloader, test_dataloader, **kwargs)
+    else:
+        train_distributed.main(model, train_dataloader, test_dataloader, world_size, **kwargs)
+
+if __name__ == "__main__":
+    parser = get_args_parser()
+    args = parser.parse_args()
+    run(**args)
+
+
