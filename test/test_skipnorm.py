@@ -11,7 +11,13 @@ def test_initialization():
 def test_mlp():
     from sn_models import SNResNet
     mlp = SNResNet(5, dim=5, hidden_dim=5, sn_window=2)
-    x = torch.randn((5,))
+    x = torch.randn((16, 5))
+    print(mlp(x))
+
+def test_attn_mlp():
+    from sn_models import AttnResNet
+    mlp = AttnResNet(5, dim=5, hidden_dim=5, attn_dim=10)
+    x = torch.randn((16, 5))
     print(mlp(x))
 
 def test_transformer():
@@ -24,4 +30,5 @@ def test_transformer():
 if __name__ == "__main__":
     # test_initialization()
     # test_mlp()
-    test_transformer()
+    test_attn_mlp()
+    # test_transformer()
