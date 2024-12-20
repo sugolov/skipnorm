@@ -2,20 +2,21 @@ import torch
 import argparse
 
 def get_args_parser():
-    parser = argparse.ArgumentParser('DeiT training and evaluation script', add_help=False)
+    parser = argparse.ArgumentParser('Training and evaluation script', add_help=False)
     parser.add_argument('--batch-size', default=64, type=int)
     parser.add_argument('--epochs', default=300, type=int)
     # parser.add_argument('--bce-loss', action='store_true')
     # parser.add_argument('--unscale-lr', action='store_true')
 
     # Model parameters
-    parser.add_argument('--model_name', default='ViT_S16', type=str, metavar='MODEL',
+    parser.add_argument('--model_name', default='ViT_T16', type=str, metavar='MODEL',
                         help='Name of model to train')
-    parser.add_argument('--input-size', default=32, type=int, help='images input size')
+    parser.add_argument('--data_name', default='cifar10', type=str, metavar='MODEL',
+                        help='Name of data to train')
 
-    parser.add_argument('--drop', type=float, default=0.0, metavar='PCT',
+    parser.add_argument('--p_drop', type=float, default=0.0, metavar='PCT',
                         help='Dropout rate (default: 0.)')
-    parser.add_argument('--stoch_depth', type=float, default=0.1, metavar='PCT',
+    parser.add_argument('--p_sd', type=float, default=0.1, metavar='PCT',
                         help='Stochastic depth rate (default: 0.1)')
 
     parser.add_argument('--model-ema', action='store_true')
@@ -98,7 +99,7 @@ def get_args_parser():
                         help='Do not random erase first (clean) augmentation split')
 
     # * Mixup params
-    parser.add_argument('--mixup', type=float, default=0.8,
+    parser.add_argument('--mixup_alpha', type=float, default=0.8,
                         help='mixup alpha, mixup enabled if > 0. (default: 0.8)')
     parser.add_argument('--cutmix', type=float, default=1.0,
                         help='cutmix alpha, cutmix enabled if > 0. (default: 1.0)')
@@ -162,12 +163,14 @@ def get_args_parser():
                         help='url used to set up distributed training')
     return parser
 
-def run(model_name, data_name, epochs, batch_size, lr, weight_decay, p_drop, p_sd, distributed, world_size, **kwargs):
+def run(model_name, data_name, epochs, batch_size, lr, weight_decay, p_drop, p_sd, distributed, world_size, mixup_alpha, **kwargs):
     from model import get_model
     from data import get_dataloaders 
 
-    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(data_name, **args)
+    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(data_name, mixup_alpha=mixup_alpha)
     model = get_model(model_name, image_size, num_classes)
+
+    return 
 
     if distributed:
         train.main(model, train_dataloader, test_dataloader, **kwargs)
@@ -176,7 +179,7 @@ def run(model_name, data_name, epochs, batch_size, lr, weight_decay, p_drop, p_s
 
 if __name__ == "__main__":
     parser = get_args_parser()
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
     run(**args)
 
 

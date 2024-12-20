@@ -1,6 +1,7 @@
 import torch
 
-from mixup import Mixup
+from data.mixup import Mixup
+from data.mixture_of_gaussians import two_class_mog_dataloaders
 
 def get_dataloaders(data_name, mixup_alpha=0.2, num_workers=0, **kwargs):
     if data_name == "cifar10":
@@ -44,5 +45,9 @@ def get_dataloaders(data_name, mixup_alpha=0.2, num_workers=0, **kwargs):
 
         num_classes = 10
         image_size = 32
+    elif data_name == "two_class_mog":
+        return two_class_mog_dataloaders()
+    else:
+        raise(NotImplementedError("Dataloader not implemented yet"))
     
     return train_dataloader, test_dataloader, num_classes, image_size

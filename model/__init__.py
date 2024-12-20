@@ -1,9 +1,9 @@
 import torch 
-from vit import VisionTransformer
+from model.vit import ViT
 
 def get_model(model_name, image_size, num_classes, **kwargs):
     if model_name == "ViT_T16":
-        return VisionTransformer(
+        return ViT(
             image_size=image_size, 
             patch_size=2, 
             num_classes=num_classes, 
@@ -16,7 +16,7 @@ def get_model(model_name, image_size, num_classes, **kwargs):
             **kwargs
         )
     elif model_name == "ViT_S16":
-        return VisionTransformer(
+        return ViT(
             image_size=image_size, 
             patch_size=2, 
             num_classes=num_classes, 
