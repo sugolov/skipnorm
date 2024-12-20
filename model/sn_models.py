@@ -60,10 +60,11 @@ class AttnResNet(nn.Module):
                 nn.Linear(hidden_dim, dim),
             ))
             self.attns.append(
-                CausalAttention(
+                Attention(
                     dim=dim,
                     heads=1,
-                    dim_head=attn_dim
+                    dim_head=attn_dim,
+                    causal=True
                 )
             )
 
