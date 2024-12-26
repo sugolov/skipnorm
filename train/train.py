@@ -1,21 +1,58 @@
 import torch
 from vit import ViT
+import wandb
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+def main(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs, log_wandb=True):
 
-ViT_config = {
-    "image_size": 32, 
-    "patch_size": 2, 
-    "num_classes": 10, 
-    "dim": 256, 
-    "depth": 8, 
-    "heads": 8, 
-    "mlp_dim": 512, 
-    "channels": 3, 
-    "dim_head": 256
-}
+    steps_per_epoch = int(len(train_loader) / batch_size)  
 
-# additional fn
+    ce = nn.CrossEntropyLoss()
+
+    def eval(model, test_loader, epoch):
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for X, c in tqdm(test_loader):
+                X, c = X.to(device), c.to(device)
+                pred = model(X)
+                c_pred = torch.max(pred, dim=1).indices
+                
+                correct += torch.sum(c_pred == c)
+                total += len(c)
+            acc = (correct / total).item()
+            wandb.log({
+                "eval_epoch": epoch,
+                "eval_acc": acc
+            })
+
+        return acc
+
+    def train_step(model, train_loader, epoch):
+        for X, Y in train_loader:
+
+            X, Y = X.to(device), Y.to(device)
+
+            optimizer.zero_grad()
+
+            Y_pred =  model(X)
+            loss = ce(Y_pred, Y.long())
+
+            loss.backward()
+            optimizer.step()
+            scheduler.step() if scheduler else None
+
+            wandb.log({"epoch": epoch, "loss": loss.item(), "lr": scheduler.get_lr()[0] if scheduler else None}) if log_wandb else None
+
+    # training loop
+
+    eval(model, test_loader, 0)
+    for epoch in tqdm(range(1, epochs+1)):
+        train_step(model, train_loader, epoch)
+        acc = eval(model, test_loader, epoch)
+        # TODO: add checkpointing
+            
+    return model, acc
+
 
 if __name__ == "__main__":
     import os

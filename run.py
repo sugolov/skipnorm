@@ -9,14 +9,12 @@ def get_args_parser():
     # parser.add_argument('--unscale-lr', action='store_true')
 
     # Model parameters
-    parser.add_argument('--model_name', default='ViT_T16', type=str, metavar='MODEL',
-                        help='Name of model to train')
-    parser.add_argument('--data_name', default='cifar10', type=str, metavar='MODEL',
-                        help='Name of data to train')
+    parser.add_argument('--project-name', default='skipnorm', type=str, metavar='PROJECT', help='Name of project')
+    parser.add_argument('--model-name', default='ViT_T16', type=str, metavar='MODEL', help='Name of model to train')
 
-    parser.add_argument('--p_drop', type=float, default=0.0, metavar='PCT',
+    parser.add_argument('--p-drop', type=float, default=0.0, metavar='PCT',
                         help='Dropout rate (default: 0.)')
-    parser.add_argument('--p_sd', type=float, default=0.1, metavar='PCT',
+    parser.add_argument('--p-sd', type=float, default=0.1, metavar='PCT',
                         help='Stochastic depth rate (default: 0.1)')
 
     parser.add_argument('--model-ema', action='store_true')
@@ -26,18 +24,12 @@ def get_args_parser():
     parser.add_argument('--model-ema-force-cpu', action='store_true', default=False, help='')
 
     # Optimizer parameters
-    parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
-                        help='Optimizer (default: "adamw"')
-    parser.add_argument('--opt-eps', default=1e-8, type=float, metavar='EPSILON',
-                        help='Optimizer Epsilon (default: 1e-8)')
-    parser.add_argument('--opt-betas', default=None, type=float, nargs='+', metavar='BETA',
-                        help='Optimizer Betas (default: None, use opt default)')
-    parser.add_argument('--clip-grad', type=float, default=None, metavar='NORM',
-                        help='Clip gradient norm (default: None, no clipping)')
-    parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
-                        help='SGD momentum (default: 0.9)')
-    parser.add_argument('--weight-decay', type=float, default=0.05,
-                        help='weight decay (default: 0.05)')
+    parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER', help='Optimizer (default: "adamw"')
+    parser.add_argument('--opt-eps', default=1e-8, type=float, metavar='EPSILON', help='Optimizer Epsilon (default: 1e-8)')
+    parser.add_argument('--opt-betas', default=None, type=float, nargs='+', metavar='BETA', help='Optimizer Betas (default: None, use opt default)')
+    parser.add_argument('--clip-grad', type=float, default=None, metavar='NORM', help='Clip gradient norm (default: None, no clipping)')
+    parser.add_argument('--momentum', type=float, default=0.9, metavar='M', help='SGD momentum (default: 0.9)')
+    parser.add_argument('--weight-decay', type=float, default=0.05, help='weight decay (default: 0.05)')
 
     # Learning rate schedule parameters
     parser.add_argument('--sched', default='cosine', type=str, metavar='SCHEDULER',
@@ -70,8 +62,7 @@ def get_args_parser():
     parser.add_argument('--color-jitter', type=float, default=0.3, metavar='PCT',
                         help='Color jitter factor (default: 0.3)')
     parser.add_argument('--aa', type=str, default='rand-m9-mstd0.5-inc1', metavar='NAME',
-                        help='Use AutoAugment policy. "v0" or "original". " + \
-                             "(default: rand-m9-mstd0.5-inc1)'),
+                        help='Use AutoAugment policy. "v0" or "original". (default: rand-m9-mstd0.5-inc1)'),
     parser.add_argument('--smoothing', type=float, default=0.1, help='Label smoothing (default: 0.1)')
     parser.add_argument('--train-interpolation', type=str, default='bicubic',
                         help='Training interpolation (random, bilinear, bicubic default: "bicubic")')
@@ -99,7 +90,7 @@ def get_args_parser():
                         help='Do not random erase first (clean) augmentation split')
 
     # * Mixup params
-    parser.add_argument('--mixup_alpha', type=float, default=0.8,
+    parser.add_argument('--mixup-alpha', type=float, default=0.8,
                         help='mixup alpha, mixup enabled if > 0. (default: 0.8)')
     parser.add_argument('--cutmix', type=float, default=1.0,
                         help='cutmix alpha, cutmix enabled if > 0. (default: 1.0)')
@@ -113,73 +104,80 @@ def get_args_parser():
                         help='How to apply mixup/cutmix params. Per "batch", "pair", or "elem"')
 
     # Distillation parameters
-    parser.add_argument('--teacher-model', default='regnety_160', type=str, metavar='MODEL',
-                        help='Name of teacher model to train (default: "regnety_160"')
-    parser.add_argument('--teacher-path', type=str, default='')
-    parser.add_argument('--distillation-type', default='none', choices=['none', 'soft', 'hard'], type=str, help="")
-    parser.add_argument('--distillation-alpha', default=0.5, type=float, help="")
-    parser.add_argument('--distillation-tau', default=1.0, type=float, help="")
+    # parser.add_argument('--teacher-model', default='regnety_160', type=str, metavar='MODEL',
+    #                     help='Name of teacher model to train (default: "regnety_160"')
+    # parser.add_argument('--teacher-path', type=str, default='')
+    # parser.add_argument('--distillation-type', default='none', choices=['none', 'soft', 'hard'], type=str, help="")
+    # parser.add_argument('--distillation-alpha', default=0.5, type=float, help="")
+    # parser.add_argument('--distillation-tau', default=1.0, type=float, help="")
     
     # * Cosub params
-    parser.add_argument('--cosub', action='store_true') 
+    # parser.add_argument('--cosub', action='store_true') 
     
     # * Finetuning params
-    parser.add_argument('--finetune', default='', help='finetune from checkpoint')
-    parser.add_argument('--attn-only', action='store_true') 
+    # parser.add_argument('--finetune', default='', help='finetune from checkpoint')
+    # parser.add_argument('--attn-only', action='store_true') 
     
     # Dataset parameters
     parser.add_argument('--data-path', default='/datasets01/imagenet_full_size/061417/', type=str,
                         help='dataset path')
-    parser.add_argument('--data-set', default='IMNET', choices=['CIFAR', 'IMNET', 'INAT', 'INAT19'],
+    parser.add_argument('--data-set', default='CIFAR10', choices=['CIFAR10', 'IMNET', 'INAT', 'INAT19', 'two_class_mog'],
                         type=str, help='Image Net dataset path')
-    parser.add_argument('--inat-category', default='name',
-                        choices=['kingdom', 'phylum', 'class', 'order', 'supercategory', 'family', 'genus', 'name'],
-                        type=str, help='semantic granularity')
+    # parser.add_argument('--inat-category', default='name',
+    #                     choices=['kingdom', 'phylum', 'class', 'order', 'supercategory', 'family', 'genus', 'name'],
+    #                     type=str, help='semantic granularity')
 
-    parser.add_argument('--output_dir', default='',
+    parser.add_argument('--output-dir', default='',
                         help='path where to save, empty for no saving')
-    parser.add_argument('--device', default='cuda',
-                        help='device to use for training / testing')
+
+    parser.add_argument('--device', default='cuda', help='device to use for training / testing')
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
-    parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
-                        help='start epoch')
+    parser.add_argument('--start_epoch', default=0, type=int, metavar='N', help='start epoch')
     parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
-    parser.add_argument('--eval-crop-ratio', default=0.875, type=float, help="Crop ratio for evaluation")
+    # parser.add_argument('--eval-crop-ratio', default=0.875, type=float, help="Crop ratio for evaluation")
     parser.add_argument('--dist-eval', action='store_true', default=False, help='Enabling distributed evaluation')
     parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--pin-mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
-    parser.add_argument('--no-pin-mem', action='store_false', dest='pin_mem',
-                        help='')
+    parser.add_argument('--no-pin-mem', action='store_false', dest='pin_mem', help='')
     parser.set_defaults(pin_mem=True)
+
+    # logging args
+    parser.add_argument('--log-wandb', default=False, action="store_true")
 
     # distributed training parameters
     parser.add_argument('--distributed', action='store_true', default=False, 
                         help='Enabling distributed training')
-    parser.add_argument('--world_size', default=1, type=int, 
+    parser.add_argument('--world-size', default=1, type=int, 
                         help='number of distributed processes')
-    parser.add_argument('--dist_url', default='env://', 
+    parser.add_argument('--dist-url', default='env://', 
                         help='url used to set up distributed training')
     return parser
 
-def run(model_name, data_name, epochs, batch_size, lr, weight_decay, p_drop, p_sd, distributed, world_size, mixup_alpha, **kwargs):
+def run(args):
     from model import get_model
     from data import get_dataloaders 
+    from train import get_optimizer
 
-    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(data_name, mixup_alpha=mixup_alpha)
-    model = get_model(model_name, image_size, num_classes)
+    # TODO: add mixup, cutmix, random erasing to collate function in dataloader
+    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(args.data_set, mixup_alpha=args.mixup_alpha, data_path=args.data_path)
+    model = get_model(args.model_name, image_size, num_classes)
+    optimizer = get_optimizer(args.opt, args.model, args.lr, args.momentum, args.weight_decay, args.opt_eps, args.opt_betas)
+    scheduler = get_scheduler(args.scheduler_name, args.optimizer, args.train_dataloader, args.batch_size)
 
-    return 
+    wandb.init(project=args.project_name, name=args.model_name, config=vars(args))
 
     if distributed:
-        train.main(model, train_dataloader, test_dataloader, **kwargs)
+        train_distributed.main(model, train_dataloader, test_dataloader, args.epochs)
     else:
-        train_distributed.main(model, train_dataloader, test_dataloader, world_size, **kwargs)
+        train.main(model, optimizer, scheduler, train_dataloader, test_dataloader, args.epochs, log_wandb=True)
+    wandb.finish()
 
 if __name__ == "__main__":
     parser = get_args_parser()
-    args = vars(parser.parse_args())
-    run(**args)
+    args = parser.parse_args()
+    print(vars(args))
+    run(args)
 
 

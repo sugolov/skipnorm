@@ -1,5 +1,37 @@
 import math
 from torch.optim.lr_scheduler import _LRScheduler
+import torch.optim as optim
+    
+def get_optimizer(opt_name, model, lr, momentum=0.9, weight_decay=0.05, opt_eps=1e-8, opt_betas=None):
+
+    if opt_betas is None:
+        opt_betas = (0.9, 0.999)
+    
+    opt_name = opt_name.lower()
+    
+    if opt_name == 'sgd':
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    elif opt_name == 'adamw':
+        optimizer = optim.AdamW(params, lr=lr, betas=opt_betas, eps=opt_eps, weight_decay=weight_decay)
+    else:
+        raise NotImplementedError("optimizer not implemented")
+    return optimizer
+
+def get_scheduler(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs, log_wandb=True):
+
+    steps_per_epoch = int(len(train_loader) / batch_size)  
+    scheduler_name = scheduler_name.lower()
+    if scheduler_name == "cosine":
+        scheduler = CosineWarmupScheduler(
+                optimizer,
+                warmup_epochs=1,
+                max_epochs=epochs * steps_per_epoch,
+                warmup_start_lr=1e-1,
+                eta_min=1e-5
+            )
+    else:
+        scheduler = None
+
 
 class CosineWarmupScheduler(_LRScheduler):
     """

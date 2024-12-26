@@ -1,4 +1,6 @@
-from torch.datasets import Dataset
+import torch
+from torch.utils.data import Dataset, DataLoader
+
 class LabeledGaussianMixtureDataset(Dataset):
     """Dataset class for Gaussian mixture samples with labels."""
     def __init__(self, samples, labels):
