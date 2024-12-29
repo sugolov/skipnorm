@@ -32,7 +32,7 @@ def get_args_parser():
     parser.add_argument('--weight-decay', type=float, default=0.05, help='weight decay (default: 0.05)')
 
     # Learning rate schedule parameters
-    parser.add_argument('--sched', default='cosine', type=str, metavar='SCHEDULER',
+    parser.add_argument('--scheduler-name', default='cosine', type=str, metavar='SCHEDULER',
                         help='LR scheduler (default: "cosine"')
     parser.add_argument('--lr', type=float, default=5e-4, metavar='LR',
                         help='learning rate (default: 5e-4)')
@@ -158,21 +158,23 @@ def get_args_parser():
 def run(args):
     from model import get_model
     from data import get_dataloaders 
-    from train import get_optimizer
+    from train import get_optimizer, get_scheduler
 
     # TODO: add mixup, cutmix, random erasing to collate function in dataloader
-    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(args.data_set, mixup_alpha=args.mixup_alpha, data_path=args.data_path)
-    model = get_model(args.model_name, image_size, num_classes)
-    optimizer = get_optimizer(args.opt, args.model, args.lr, args.momentum, args.weight_decay, args.opt_eps, args.opt_betas)
-    scheduler = get_scheduler(args.scheduler_name, args.optimizer, args.train_dataloader, args.batch_size)
+    # train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(args.data_set, mixup_alpha=args.mixup_alpha, data_path=args.data_path)
+    # model = get_model(args.model_name, image_size, num_classes)
+    model = get_model(args.model_name, 32, 10)
+    optimizer = get_optimizer(args.opt, model, args.lr, args.momentum, args.weight_decay, args.opt_eps, args.opt_betas)
+    scheduler = get_scheduler(args.scheduler_name, optimizer, train_dataloader, args.batch_size)
 
-    wandb.init(project=args.project_name, name=args.model_name, config=vars(args))
+    wandb.init(project=args.project_name, name=args.model_name, config=vars(args)) if args.log_wandb else None
 
     if distributed:
         train_distributed.main(model, train_dataloader, test_dataloader, args.epochs)
     else:
         train.main(model, optimizer, scheduler, train_dataloader, test_dataloader, args.epochs, log_wandb=True)
-    wandb.finish()
+        
+    wandb.finish() if args.log_wandb else None
 
 if __name__ == "__main__":
     parser = get_args_parser()

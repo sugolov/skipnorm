@@ -12,12 +12,12 @@ def get_optimizer(opt_name, model, lr, momentum=0.9, weight_decay=0.05, opt_eps=
     if opt_name == 'sgd':
         optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     elif opt_name == 'adamw':
-        optimizer = optim.AdamW(params, lr=lr, betas=opt_betas, eps=opt_eps, weight_decay=weight_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=lr, betas=opt_betas, eps=opt_eps, weight_decay=weight_decay)
     else:
         raise NotImplementedError("optimizer not implemented")
     return optimizer
 
-def get_scheduler(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs, log_wandb=True):
+def get_scheduler(scheduler_name, optimizer, train_dataloader, batch_size):
 
     steps_per_epoch = int(len(train_loader) / batch_size)  
     scheduler_name = scheduler_name.lower()
