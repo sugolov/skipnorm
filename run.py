@@ -182,10 +182,13 @@ def run(args):
 
     checkpoint_items = get_checkpoint_items(args)
 
-    wandb.init(project=args.project_name, name=args.model_name, config=vars(args)) if args.log_wandb else None
-
     if args.distributed:
         deepspeed.init_distributed()
+        local_rank = int(os.environ.get("LOCAL_RANK", -1))
+        if local_rank == 0 and args.log_wandb:
+            wandb.init(project=args.project_name, name=args.model_name, config=vars(args))
+
+
         run_training_deepspeed(
             model=model, 
             train_dataloader=train_dataloader, 
@@ -200,6 +203,7 @@ def run(args):
         )
         run_training_distributed(model, train_dataloader, test_dataloader, args.epochs)
     else:
+        wandb.init(project=args.project_name, name=args.model_name, config=vars(args)) if args.log_wandb else None
         run_training(
             model=model, 
             optimizer=optimizer, 
