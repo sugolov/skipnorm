@@ -22,11 +22,11 @@ def create_checkpoint(model, checkpoint_path, model_name, epoch, checkpoint_item
     model.save_checkpoint(checkpoint_path, save_name, client_state=checkpoint_items)
 
 def main(model, train_dataloader, test_dataloader, epochs, 
-         model_name, checkpoint_path, checkpoint_epoch, local_rank, 
+         model_name, checkpoint_path, checkpoint_epoch, local_rank, deepspeed_config,
          checkpoint_items=None, log_wandb=True):
     
     # Initialize DeepSpeed
-    with open('ds_config.json') as f:
+    with open(deepspeed_config) as f:
         ds_config = json.load(f)
 
     # Initialize DeepSpeed engine

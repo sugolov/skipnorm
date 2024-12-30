@@ -1,5 +1,6 @@
+import os
 import torch
-#import deepspeed
+import deepspeed
 import argparse
 
 def get_args_parser():
@@ -44,7 +45,7 @@ def get_args_parser():
 
     parser.add_argument('--decay-epochs', type=float, default=30, metavar='N', help='epoch interval to decay LR')
     parser.add_argument('--warmup-epochs', type=int, default=5, metavar='N', help='epochs to warmup LR, if scheduler supports')
-    parser.add_argument('--cooldown-epochs', type=int, default=10, metavar='N', help='epochs to cooldown LR at min_lr, after cyclic schedule ends')
+    parser.add_argument('--cooldown-epochs', type=int, default=10, metavar='N', help='epochs to cooldown LR at min_lr, after cyclic schedule enF-')
     parser.add_argument('--patience-epochs', type=int, default=10, metavar='N', help='patience epochs for Plateau LR scheduler (default: 10')
     parser.add_argument('--decay-rate', '--dr', type=float, default=0.1, metavar='RATE', help='LR decay rate (default: 0.1)')
 
@@ -103,7 +104,7 @@ def get_args_parser():
     #                     type=str, help='semantic granularity')
 
     parser.add_argument('--checkpoint-path', default='', type=str, help='checkpoint path, empty for no checkpointing')
-    parser.add_argument('--checkpoint-epochs', default=10, type=int, help='checkpoint frequency in epochs')
+    parser.add_argument('--checkpoint-epoch', default=10, type=int, help='checkpoint frequency in epochs')
 
 
     parser.add_argument('--output-dir', default='', help='path where to save, empty for no saving')
@@ -122,8 +123,16 @@ def get_args_parser():
     # logging args
     parser.add_argument('--log-wandb', default=False, action="store_true")
 
-    # distributed training parameters
+    # deepspeed parameters
+    parser.add_argument('--deepspeed', action='store_true', default=False, help='Enabling deepspeed optimization')
+    parser.add_argument('--deepspeed_config', default='', type=str, help='deepspeed config path')
+    parser.add_argument('--local_rank', type=int, default=-1)
+
+    parser.add_argument('--sync-deepspeed-config', default=False, action='store_true', help='match passed config with arg inputs')
+
+    # regular ddp
     parser.add_argument('--distributed', action='store_true', default=False, help='Enabling distributed training')
+
     parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist-url', default='env://', help='url used to set up distributed training')
     return parser
@@ -139,7 +148,7 @@ def run(args):
     from train import get_optimizer, get_scheduler
     from train.train import main as run_training
     from train.train_distributed import main as run_training_distributed
-    from train.train_distributed import main as run_training_deepspeed
+    from train.train_deepspeed import main as run_training_deepspeed
     import wandb
 
     model_device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -183,7 +192,7 @@ def run(args):
 
     checkpoint_items = get_checkpoint_items(args)
 
-    if args.distributed:
+    if args.deepspeed:
         deepspeed.init_distributed()
         local_rank = int(os.environ.get("LOCAL_RANK", -1))
         if local_rank == 0 and args.log_wandb:
@@ -199,10 +208,11 @@ def run(args):
             checkpoint_path=args.checkpoint_path, 
             checkpoint_epoch=args.checkpoint_epoch, 
             local_rank=args.local_rank, 
+            deepspeed_config=args.deepspeed_config,
             checkpoint_items=None, 
             log_wandb=True
         )
-        run_training_distributed(model, train_dataloader, test_dataloader, args.epochs)
+        # run_training_distributed(model, train_dataloader, test_dataloader, args.epochs)
     else:
         wandb.init(project=args.project_name, name=args.model_name, config=vars(args)) if args.log_wandb else None
         run_training(
