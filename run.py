@@ -151,7 +151,8 @@ def run(args):
         mixup_alpha=args.mixup_alpha, 
         data_path=args.data_path, 
         pin_memory=args.pin_mem,
-        distributed=args.distributed
+        distributed=args.distributed,
+        num_workers=args.num_workers
     )
 
     model = get_model(

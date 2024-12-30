@@ -50,7 +50,7 @@ def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path=
             train_dataset, 
             shuffle=(train_sampler is None),  
             sampler=train_sampler,
-            num_workers=4,
+            num_workers=num_workers,
             pin_memory=pin_memory,
             drop_last=True,
             collate_fn=Mixup(alpha=mixup_alpha)
@@ -61,7 +61,7 @@ def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path=
             batch_size=batch_size,
             shuffle=False,
             sampler=test_sampler,
-            num_workers=4,
+            num_workers=num_workers,
             pin_memory=pin_memory,
             drop_last=False
         )

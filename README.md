@@ -10,3 +10,6 @@ python train.py --cifar
 - implement attention skip
 - if it seems to "work", implement across a few models
  
+```
+python -m pip install torch deepspeed torchvision wandb 
+```
