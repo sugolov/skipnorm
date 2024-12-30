@@ -1,18 +1,38 @@
+import os
 import torch
-from vit import ViT
+import torch.nn as nn
+from tqdm import tqdm
 import wandb
 
-def main(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs, log_wandb=True):
+def create_checkpoint(model, checkpoint_path, model_name, epoch, checkpoint_items):
+    if len(checkpoint_path) == 0:
+        return
 
-    steps_per_epoch = int(len(train_loader) / batch_size)  
+    os.makedirs(checkpoint_path, exist_ok=True)
+    checkpoint = {
+        "epoch": epoch, 
+        "model": model.state_dict()
+    }
+    checkpoint.update(checkpoint_items)
 
-    ce = nn.CrossEntropyLoss()
+    save_name = model_name + f"_{epoch}.pt"
+    save_path = os.path.join(checkpoint_path, save_name)
+    torch.save(checkpoint, save_path)
+     
 
-    def eval(model, test_loader, epoch):
+def main(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs, 
+    model_name, checkpoint_path, checkpoint_epoch, checkpoint_items=None, log_wandb=True):
+    
+    device = next(model.parameters()).device  # Get device from model
+    batch_size = train_dataloader.batch_size
+    steps_per_epoch = len(train_dataloader)
+    checkpoint_items = checkpoint_items if checkpoint_items else {}
+
+    def eval(model, test_dataloader, epoch):
         correct = 0
         total = 0
         with torch.no_grad():
-            for X, c in tqdm(test_loader):
+            for X, c in tqdm(test_dataloader):
                 X, c = X.to(device), c.to(device)
                 pred = model(X)
                 c_pred = torch.max(pred, dim=1).indices
@@ -20,153 +40,45 @@ def main(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs,
                 correct += torch.sum(c_pred == c)
                 total += len(c)
             acc = (correct / total).item()
-            wandb.log({
-                "eval_epoch": epoch,
-                "eval_acc": acc
-            })
-
+            if log_wandb:
+                wandb.log({
+                    "eval_epoch": epoch,
+                    "eval_acc": acc
+                })
         return acc
 
-    def train_step(model, train_loader, epoch):
-        for X, Y in train_loader:
-
+    def train_step(model, train_dataloader, epoch):
+        for X, Y in tqdm(train_dataloader):
             X, Y = X.to(device), Y.to(device)
 
             optimizer.zero_grad()
 
-            Y_pred =  model(X)
+            Y_pred = model(X)
             loss = ce(Y_pred, Y.long())
 
             loss.backward()
             optimizer.step()
-            scheduler.step() if scheduler else None
+            if scheduler:
+                scheduler.step()
 
-            wandb.log({"epoch": epoch, "loss": loss.item(), "lr": scheduler.get_lr()[0] if scheduler else None}) if log_wandb else None
+            if log_wandb:
+                wandb.log({
+                    "epoch": epoch,
+                    "loss": loss.item(),
+                    "lr": scheduler.get_lr()[0] if scheduler else None
+                })
 
-    # training loop
-
-    eval(model, test_loader, 0)
+    ce = nn.CrossEntropyLoss()
+    
+    # main loop
+    eval(model, test_dataloader, 0)
     for epoch in tqdm(range(1, epochs+1)):
-        train_step(model, train_loader, epoch)
-        acc = eval(model, test_loader, epoch)
-        # TODO: add checkpointing
+        train_step(model, train_dataloader, epoch)
+        acc = eval(model, test_dataloader, epoch)
+
+
+        if epoch % checkpoint_epoch == 0:
+            checkpoint_items.update({"accuracy": acc})
+            create_checkpoint(model, checkpoint_path, model_name, epoch, checkpoint_items)
             
     return model, acc
-
-
-if __name__ == "__main__":
-    import os
-    import argparse
-
-    import torch.optim as optim
-    from torch.utils.data import DataLoader
-
-    import torchvision
-    from torchvision import transforms
-
-    from tqdm import tqdm
-    import wandb
-
-    # args
-    parser = argparse.ArgumentParser("get args for training")
-    parser.add_argument("--cifar", action="store_true")
-    parser.add_argument("--mnist", action="store_true")
-    parser.add_argument("--skipnorm", action="store_true")
-    parser.add_argument("--data_dir", type=str, default="~/.datasets/")
-    parser.add_argument("--weight_dir", type=str, default="~/.weights/")
-    args = parser.parse_args()
-
-    data_dir = args.data_dir
-    weight_dir = args.data_dir
-
-    name = ""
-
-    if args.skipnorm:
-        name += "ViT_SN"
-
-        model_config = ViT_config
-        model_config["sn_window"] = 6
-
-        torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
-        model = ViT(**model_config).to(device)
-    else:
-        name += "ViT"
-
-        model_config = ViT_config
-
-        torch.save(model_config, os.path.join(args.weight_dir, name + f"_model_config"))
-        model = ViT(**model_config).to(device)
-
-    if args.cifar:
-        name += "_cifar"
-
-        transform = transforms.Compose([
-            transforms.ToTensor()
-        ])
-
-        train_data = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-        test_data = torchvision.datasets.CIFAR10(root=data_dir, train=False,  download=True, transform=transform)
-        n_test_data = len(test_data)
-
-        train_loader = DataLoader(train_data, batch_size=64, shuffle=False, num_workers=2)
-        test_loader = DataLoader(test_data, batch_size=64, shuffle=False, num_workers=2)
-        
-
-    else: 
-        pass
-
-    # optimizer 
-    optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay=1e-5)
-
-    # train loop
-    wandb.init(project="skipnorm", name=name, config=model_config)
-
-    # define eval loop
-    def eval_loop(model, test_loader, epoch):
-        correct = 0
-        with torch.no_grad():
-            for X, c in tqdm(test_loader):
-
-                X, c = X.to(device), c.to(device)
-                pred = model(X)
-                c_pred = torch.max(pred, dim=1).indices
-                
-                correct += torch.sum(c_pred == c)
-
-            wandb.log({
-                "eval_epoch": epoch,
-                "eval_acc": (correct / n_test_data).item()
-            })
-
-    eval_loop(model, test_loader, 0)
-
-    for epoch in range(300):
-        
-        for X, c in tqdm(train_loader):
-            X, c = X.to(device), c.to(device)
-
-            pred = model(X)
-            loss = torch.nn.functional.cross_entropy(pred, c)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            wandb.log({
-                "epoch": epoch,
-                "loss": loss.item()
-            })   
-
-        # eval loop
-        if (epoch + 1) % 1 == 0:
-            eval_loop(model, test_loader, epoch+1)
-
-        # checkpoint
-        if (epoch + 1) % 10 == 0:
-            torch.save(
-                {"optimizer": optimizer.state_dict(),
-                "model": model.state_dict()},
-                os.path.join(args.weight_dir, name + f"-cpt-{epoch+1}")
-            ) 
-
-    wandb.finish()

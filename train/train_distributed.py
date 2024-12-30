@@ -1,7 +1,3 @@
-import torch
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
-from vit import ViT
 import os
 import argparse
 import torch
@@ -19,7 +15,7 @@ from tqdm import tqdm
 import wandb
 import gc
 from torch.cuda.amp import autocast, GradScaler
-from vit import ViT
+from model.vit import ViT
 
 def setup_memory_settings():
     """Configure CUDA memory settings to avoid fragmentation."""
@@ -73,10 +69,6 @@ def get_data_loaders(args, world_size=None, rank=None):
     )
     
     return train_loader, test_loader, train_sampler, len(test_data)
-
-from collections import defaultdict
-
-from cosine_warmup import CosineWarmupScheduler
 
 """
 ViT_config = {

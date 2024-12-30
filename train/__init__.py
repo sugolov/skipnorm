@@ -17,9 +17,9 @@ def get_optimizer(opt_name, model, lr, momentum=0.9, weight_decay=0.05, opt_eps=
         raise NotImplementedError("optimizer not implemented")
     return optimizer
 
-def get_scheduler(scheduler_name, optimizer, train_dataloader, batch_size):
+def get_scheduler(scheduler_name, optimizer, train_dataloader, epochs, batch_size):
 
-    steps_per_epoch = int(len(train_loader) / batch_size)  
+    steps_per_epoch = int(len(train_dataloader) / batch_size)  
     scheduler_name = scheduler_name.lower()
     if scheduler_name == "cosine":
         scheduler = CosineWarmupScheduler(

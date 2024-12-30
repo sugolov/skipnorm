@@ -1,10 +1,11 @@
 import torch
+from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
 
-from data.mixup import Mixup
+from data.augment import Mixup
 from data.mixture_of_gaussians import two_class_mog_dataloaders
 
-def get_dataloaders(data_set, mixup_alpha=0.2, num_workers=0, data_path="~/.data"):
+def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path="~/.data"):
     data_set = data_set.lower()
     if data_set == "cifar10":
         # normalized by global mean/std
@@ -24,10 +25,8 @@ def get_dataloaders(data_set, mixup_alpha=0.2, num_workers=0, data_path="~/.data
         ])
 
         # Load datasets
-        train_dataset = datasets.CIFAR10(root=data_path, train=True,
-                                       download=True, transform=transform_train)
-        test_dataset = datasets.CIFAR10(root=data_path, train=False,
-                                      download=True, transform=transform_test)
+        train_dataset = datasets.CIFAR10(root=data_path, train=True, download=True, transform=transform_train)
+        test_dataset = datasets.CIFAR10(root=data_path, train=False, download=True, transform=transform_test)
 
         # Create dataloaders
         train_dataloader = DataLoader(
