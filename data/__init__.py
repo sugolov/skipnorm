@@ -48,6 +48,7 @@ def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path=
         # Create dataloaders
         train_dataloader = DataLoader(
             train_dataset, 
+            batch_size=batch_size,
             shuffle=(train_sampler is None),  
             sampler=train_sampler,
             num_workers=num_workers,
