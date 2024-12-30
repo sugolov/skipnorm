@@ -139,6 +139,7 @@ def run(args):
     from train import get_optimizer, get_scheduler
     from train.train import main as run_training
     from train.train_distributed import main as run_training_distributed
+    from train.train_distributed import main as run_training_deepspeed
     import wandb
 
     model_device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -178,16 +179,40 @@ def run(args):
         epochs=args.epochs, 
         batch_size=args.batch_size
     )
-    
+
     checkpoint_items = get_checkpoint_items(args)
 
     wandb.init(project=args.project_name, name=args.model_name, config=vars(args)) if args.log_wandb else None
 
     if args.distributed:
         deepspeed.init_distributed()
+        run_training_deepspeed(
+            model=model, 
+            train_dataloader=train_dataloader, 
+            test_dataloader=test_dataloader, 
+            epochs=args.epochs, 
+            model_name=args.model_name, 
+            checkpoint_path=args.checkpoint_path, 
+            checkpoint_epoch=args.checkpoint_epoch, 
+            local_rank=args.local_rank, 
+            checkpoint_items=None, 
+            log_wandb=True
+        )
         run_training_distributed(model, train_dataloader, test_dataloader, args.epochs)
     else:
-        run_training(model, optimizer, scheduler, train_dataloader, test_dataloader, args.epochs, args.model_name, args.checkpoint_path, args.checkpoint_epochs, checkpoint_items, log_wandb=args.log_wandb)
+        run_training(
+            model=model, 
+            optimizer=optimizer, 
+            scheduler=scheduler, 
+            train_dataloader=train_dataloader, 
+            test_dataloader=test_dataloader, 
+            epochs=args.epochs, 
+            model_name=args.model_name, 
+            checkpoint_path=args.checkpoint_path, 
+            checkpoint_epoch=args.checkpoint_epochs, 
+            checkpoint_items=checkpoint_items, 
+            log_wandb=args.log_wandb
+        )
     wandb.finish() if args.log_wandb else None
 
 if __name__ == "__main__":
