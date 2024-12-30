@@ -1,4 +1,5 @@
 import torch
+import deepspeed
 import argparse
 
 def get_args_parser():
@@ -116,7 +117,6 @@ def get_args_parser():
     parser.add_argument('--dist-eval', action='store_true', default=False, help='Enabling distributed evaluation')
     parser.add_argument('--num_workers', default=10, type=int)
     parser.add_argument('--pin-mem', action='store_true', help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
-    parser.add_argument('--no-pin-mem', action='store_false', dest='pin_mem', help='')
     parser.set_defaults(pin_mem=True)
 
     # logging args
@@ -144,15 +144,47 @@ def run(args):
     model_device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # TODO: add mixup, cutmix, random erasing to collate function in dataloader
-    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(args.data_set, args.batch_size, mixup_alpha=args.mixup_alpha, data_path=args.data_path)
-    model = get_model(args.model_name, image_size, num_classes).to(model_device)
-    optimizer = get_optimizer(args.opt, model, args.lr, args.momentum, args.weight_decay, args.opt_eps, args.opt_betas)
-    scheduler = get_scheduler(args.scheduler_name, optimizer, train_dataloader, args.epochs, args.batch_size)
+    train_dataloader, test_dataloader, num_classes, image_size = get_dataloaders(
+        data_set=args.data_set, 
+        batch_size=args.batch_size, 
+        mixup_alpha=args.mixup_alpha, 
+        data_path=args.data_path, 
+        pin_memory=args.pin_mem,
+        distributed=args.distributed
+    )
+
+    model = get_model(
+        model_name=args.model_name, 
+        image_size=image_size, 
+        num_classes=num_classes
+    )
+
+    model = model.to(model_device)
+
+    optimizer = get_optimizer(
+        opt_name=args.opt, 
+        model=model, 
+        lr=args.lr, 
+        momentum=args.momentum, 
+        weight_decay=args.weight_decay, 
+        opt_eps=args.opt_eps, 
+        opt_betas=args.opt_betas
+    )
+
+    scheduler = get_scheduler(
+        scheduler_name=args.scheduler_name, 
+        optimizer=optimizer, 
+        train_dataloader=train_dataloader, 
+        epochs=args.epochs, 
+        batch_size=args.batch_size
+    )
+    
     checkpoint_items = get_checkpoint_items(args)
 
     wandb.init(project=args.project_name, name=args.model_name, config=vars(args)) if args.log_wandb else None
 
     if args.distributed:
+        deepspeed.init_distributed()
         run_training_distributed(model, train_dataloader, test_dataloader, args.epochs)
     else:
         run_training(model, optimizer, scheduler, train_dataloader, test_dataloader, args.epochs, args.model_name, args.checkpoint_path, args.checkpoint_epochs, checkpoint_items, log_wandb=args.log_wandb)

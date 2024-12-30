@@ -76,7 +76,6 @@ def main(model, optimizer, scheduler, train_dataloader, test_dataloader, epochs,
         train_step(model, train_dataloader, epoch)
         acc = eval(model, test_dataloader, epoch)
 
-
         if epoch % checkpoint_epoch == 0:
             checkpoint_items.update({"accuracy": acc})
             create_checkpoint(model, checkpoint_path, model_name, epoch, checkpoint_items)

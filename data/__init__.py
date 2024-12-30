@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 from data.augment import Mixup
 from data.mixture_of_gaussians import two_class_mog_dataloaders
 
-def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path="~/.data"):
+def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path="~/.data", pin_memory=False, distributed=False):
     data_set = data_set.lower()
     if data_set == "cifar10":
         # normalized by global mean/std
@@ -24,6 +24,23 @@ def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path=
                                (0.2023, 0.1994, 0.2010))
         ])
 
+        if distributed:
+            train_sampler = DistributedSampler(
+                trainset,
+                num_replicas=world_size,
+                rank=rank,
+                shuffle=True
+            )
+            test_sampler = DistributedSampler(
+                testset,
+                num_replicas=world_size,
+                rank=rank,
+                shuffle=False
+            )
+        else:
+            train_sampler = None
+            test_sampler = None
+
         # Load datasets
         train_dataset = datasets.CIFAR10(root=data_path, train=True, download=True, transform=transform_train)
         test_dataset = datasets.CIFAR10(root=data_path, train=False, download=True, transform=transform_test)
@@ -31,17 +48,22 @@ def get_dataloaders(data_set, batch_size, mixup_alpha, num_workers=0, data_path=
         # Create dataloaders
         train_dataloader = DataLoader(
             train_dataset, 
-            batch_size=batch_size, 
-            shuffle=True,
-            num_workers=num_workers, 
+            shuffle=(train_sampler is None),  
+            sampler=train_sampler,
+            num_workers=4,
+            pin_memory=pin_memory,
+            drop_last=True,
             collate_fn=Mixup(alpha=mixup_alpha)
         )
         
         test_dataloader = DataLoader(
             test_dataset, 
-            batch_size=batch_size, 
+            batch_size=batch_size,
             shuffle=False,
-            num_workers=num_workers
+            sampler=test_sampler,
+            num_workers=4,
+            pin_memory=pin_memory,
+            drop_last=False
         )
 
         num_classes = 10
